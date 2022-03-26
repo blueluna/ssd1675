@@ -1,8 +1,7 @@
 extern crate linux_embedded_hal;
 use linux_embedded_hal::spidev::{SpiModeFlags, SpidevOptions};
-use linux_embedded_hal::sysfs_gpio::Direction;
-use linux_embedded_hal::Delay;
-use linux_embedded_hal::{Pin, Spidev};
+use linux_embedded_hal::{Delay, Spidev, CdevPin};
+use linux_embedded_hal::gpio_cdev;
 
 extern crate ssd1675;
 use ssd1675::{Builder, Color, Dimensions, Display, GraphicDisplay, Rotation};
@@ -61,32 +60,27 @@ fn main() -> Result<(), std::io::Error> {
         .build();
     spi.configure(&options).expect("SPI configuration");
 
+
     // https://pinout.xyz/pinout/inky_phat
     // Configure Digital I/O Pins
-    let cs = Pin::new(8); // BCM8
-    cs.export().expect("cs export");
-    while !cs.is_exported() {}
-    cs.set_direction(Direction::Out).expect("CS Direction");
-    cs.set_value(1).expect("CS Value set to 1");
+    let mut gpio_chip = gpio_cdev::Chip::new("/dev/gpiochip0").expect("GPIO chip");
 
-    let busy = Pin::new(17); // BCM17
-    busy.export().expect("busy export");
-    while !busy.is_exported() {}
-    busy.set_direction(Direction::In).expect("busy Direction");
+    let line = gpio_chip.get_line(8).expect("CS line");
+    let line_handle = line.request(gpio_cdev::LineRequestFlags::OUTPUT, 1, "spi_csn").expect("CS line request");
+    let cs = CdevPin::new(line_handle).expect("CS pin");
 
-    let dc = Pin::new(22); // BCM22
-    dc.export().expect("dc export");
-    while !dc.is_exported() {}
-    dc.set_direction(Direction::Out).expect("dc Direction");
-    dc.set_value(1).expect("dc Value set to 1");
+    let line = gpio_chip.get_line(17).expect("busy line");
+    let line_handle = line.request(gpio_cdev::LineRequestFlags::INPUT, 1, "busy").expect("busy line request");
+    let busy = CdevPin::new(line_handle).expect("busy pin");
 
-    let reset = Pin::new(27); // BCM27
-    reset.export().expect("reset export");
-    while !reset.is_exported() {}
-    reset
-        .set_direction(Direction::Out)
-        .expect("reset Direction");
-    reset.set_value(1).expect("reset Value set to 1");
+    let line = gpio_chip.get_line(22).expect("dc line");
+    let line_handle = line.request(gpio_cdev::LineRequestFlags::OUTPUT, 1, "data_command").expect("dc line request");
+    let dc = CdevPin::new(line_handle).expect("dc pin");
+
+    let line = gpio_chip.get_line(27).expect("reset line");
+    let line_handle = line.request(gpio_cdev::LineRequestFlags::OUTPUT, 1, "reset").expect("reset line request");
+    let reset = CdevPin::new(line_handle).expect("reset pin");
+
     println!("Pins configured");
 
     // Initialise display controller

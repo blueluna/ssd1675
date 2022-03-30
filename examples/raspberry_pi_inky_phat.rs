@@ -1,20 +1,24 @@
 extern crate linux_embedded_hal;
-use linux_embedded_hal::spidev::{SpiModeFlags, SpidevOptions};
-use linux_embedded_hal::{Delay, Spidev, CdevPin};
+
 use linux_embedded_hal::gpio_cdev;
+use linux_embedded_hal::spidev::{SpiModeFlags, SpidevOptions};
+use linux_embedded_hal::{CdevPin, Delay, Spidev};
 
 extern crate ssd1675;
+
 use ssd1675::{Builder, Color, Dimensions, Display, GraphicDisplay, Rotation};
 
 // Graphics
 #[macro_use]
 extern crate embedded_graphics;
+
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::prelude::*;
 use embedded_graphics::text::Text;
 
 // Font
 extern crate profont;
+
 use profont::{PROFONT_12_POINT, PROFONT_14_POINT, PROFONT_24_POINT, PROFONT_9_POINT};
 
 use std::process::Command;
@@ -60,25 +64,33 @@ fn main() -> Result<(), std::io::Error> {
         .build();
     spi.configure(&options).expect("SPI configuration");
 
-
     // https://pinout.xyz/pinout/inky_phat
     // Configure Digital I/O Pins
     let mut gpio_chip = gpio_cdev::Chip::new("/dev/gpiochip0").expect("GPIO chip");
 
-    let line = gpio_chip.get_line(8).expect("CS line");
-    let line_handle = line.request(gpio_cdev::LineRequestFlags::OUTPUT, 1, "spi_csn").expect("CS line request");
+    // CSn is not actually used
+    let line = gpio_chip.get_line(6).expect("CS line");
+    let line_handle = line
+        .request(gpio_cdev::LineRequestFlags::OUTPUT, 1, "spi_csn")
+        .expect("CS line request");
     let cs = CdevPin::new(line_handle).expect("CS pin");
 
     let line = gpio_chip.get_line(17).expect("busy line");
-    let line_handle = line.request(gpio_cdev::LineRequestFlags::INPUT, 1, "busy").expect("busy line request");
+    let line_handle = line
+        .request(gpio_cdev::LineRequestFlags::INPUT, 1, "busy")
+        .expect("busy line request");
     let busy = CdevPin::new(line_handle).expect("busy pin");
 
     let line = gpio_chip.get_line(22).expect("dc line");
-    let line_handle = line.request(gpio_cdev::LineRequestFlags::OUTPUT, 1, "data_command").expect("dc line request");
+    let line_handle = line
+        .request(gpio_cdev::LineRequestFlags::OUTPUT, 1, "data_command")
+        .expect("dc line request");
     let dc = CdevPin::new(line_handle).expect("dc pin");
 
     let line = gpio_chip.get_line(27).expect("reset line");
-    let line_handle = line.request(gpio_cdev::LineRequestFlags::OUTPUT, 1, "reset").expect("reset line request");
+    let line_handle = line
+        .request(gpio_cdev::LineRequestFlags::OUTPUT, 1, "reset")
+        .expect("reset line request");
     let reset = CdevPin::new(line_handle).expect("reset pin");
 
     println!("Pins configured");
